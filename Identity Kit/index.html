@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Areeba Ilyas — identity kit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FAF8F5;
+    --text: #1B1F27;
+    --main: #D9531E;
+    --accent: #4F6D7A;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    line-height: 1.6;
+  }
+  .wrap {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 64px 24px 80px;
+  }
+  .kicker {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 40px;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+  .subtitle {
+    color: #5A6270;
+    font-size: 15px;
+    margin-bottom: 56px;
+  }
+  section {
+    margin-bottom: 56px;
+    padding-top: 40px;
+    border-top: 1px solid #E4DED3;
+  }
+  section:first-of-type { border-top: none; padding-top: 0; }
+  h2 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--main);
+    margin: 0 0 24px;
+  }
+
+  /* Type section */
+  .type-sample { margin-bottom: 28px; }
+  .type-label {
+    font-size: 12px;
+    color: #8A8F98;
+    margin-bottom: 6px;
+  }
+  .heading-demo {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 34px;
+    margin: 0;
+  }
+  .body-demo {
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    max-width: 60ch;
+    margin: 0;
+    color: var(--text);
+  }
+
+  /* Palette section */
+  .palette {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  .swatch {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #E4DED3;
+  }
+  .swatch-color { height: 84px; }
+  .swatch-info {
+    background: #fff;
+    padding: 10px 12px;
+  }
+  .swatch-name {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .swatch-hex {
+    font-family: 'Space Grotesk', monospace;
+    font-size: 12px;
+    color: #6B7280;
+  }
+
+  /* Logo section */
+  .logo-row {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    flex-wrap: wrap;
+  }
+  .logo-box {
+    text-align: center;
+  }
+  .logo-box .caption {
+    font-size: 11px;
+    color: #8A8F98;
+    margin-top: 8px;
+  }
+
+  /* Style note */
+  .note {
+    background: #fff;
+    border: 1px solid #E4DED3;
+    border-left: 3px solid var(--main);
+    border-radius: 4px;
+    padding: 20px 22px;
+    font-size: 15px;
+    max-width: 60ch;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">Identity kit</div>
+  <h1>Areeba Ilyas</h1>
+  <div class="subtitle">Fonts, palette, mark, and mood — the decisions every page inherits.</div>
+
+  <section>
+    <h2>Type</h2>
+    <div class="type-sample">
+      <div class="type-label">Heading — Space Grotesk, weight 700</div>
+      <p class="heading-demo">Areeba Ilyas — web developer</p>
+    </div>
+    <div class="type-sample">
+      <div class="type-label">Body — Inter, weight 400</div>
+      <p class="body-demo">Case studies, project write-ups, and everyday interface text all run in Inter — chosen for its neutrality and legibility at small sizes, so it disappears behind the content rather than announcing itself.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Palette</h2>
+    <div class="palette">
+      <div class="swatch">
+        <div class="swatch-color" style="background:#FAF8F5"></div>
+        <div class="swatch-info">
+          <div class="swatch-name">Background</div>
+          <div class="swatch-hex">#FAF8F5</div>
+        </div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background:#1B1F27"></div>
+        <div class="swatch-info">
+          <div class="swatch-name">Text</div>
+          <div class="swatch-hex">#1B1F27</div>
+        </div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background:#D9531E"></div>
+        <div class="swatch-info">
+          <div class="swatch-name">Main</div>
+          <div class="swatch-hex">#D9531E</div>
+        </div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background:#4F6D7A"></div>
+        <div class="swatch-info">
+          <div class="swatch-name">Accent</div>
+          <div class="swatch-hex">#4F6D7A</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Logo / favicon</h2>
+    <div class="logo-row">
+      <div class="logo-box">
+        <svg width="120" height="120" viewBox="0 0 64 64" role="img" aria-label="AI monogram, large">
+          <rect x="4" y="4" width="56" height="56" rx="10" fill="#1B1F27"/>
+          <circle cx="58" cy="6" r="5" fill="#D9531E"/>
+          <text x="32" y="41" font-family="'Space Grotesk', sans-serif" font-weight="700" font-size="26" fill="#FAF8F5" text-anchor="middle">AI</text>
+        </svg>
+        <div class="caption">Logo mark</div>
+      </div>
+      <div class="logo-box">
+        <svg width="32" height="32" viewBox="0 0 64 64" role="img" aria-label="AI monogram, favicon size">
+          <rect x="4" y="4" width="56" height="56" rx="10" fill="#1B1F27"/>
+          <circle cx="58" cy="6" r="5" fill="#D9531E"/>
+          <text x="32" y="41" font-family="'Space Grotesk', sans-serif" font-weight="700" font-size="26" fill="#FAF8F5" text-anchor="middle">AI</text>
+        </svg>
+        <div class="caption">At favicon size (32px)</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Style note</h2>
+    <div class="note">
+      Space Grotesk for headings, Inter for body. Near-black #1B1F27 on near-white #FAF8F5, with burnt orange #D9531E as the one loud color and muted slate #4F6D7A used sparingly for secondary emphasis. Mood: quietly confident and structural — geometry doing the talking, never louder than the work it frames.
+    </div>
+  </section>
+</div>
+</body>
+</html>

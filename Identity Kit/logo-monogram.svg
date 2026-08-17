@@ -1,0 +1,6 @@
+<svg width="256" height="256" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="AI monogram">
+<title>AI monogram</title>
+<rect x="4" y="4" width="56" height="56" rx="10" fill="#1B1F27"/>
+<circle cx="58" cy="6" r="5" fill="#D9531E"/>
+<text x="32" y="41" font-family="'Space Grotesk', Arial, sans-serif" font-weight="700" font-size="26" fill="#FAF8F5" text-anchor="middle">AI</text>
+</svg>
