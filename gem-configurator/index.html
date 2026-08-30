@@ -105,12 +105,44 @@
   .hint{
     position:absolute; top: 14px; left: 14px;
     font-size: 0.72rem;
-    color: var(--ink-dim);
-    background: rgba(0,0,0,0.25);
+    color: var(--ink);
+    background: rgba(0,0,0,0.55);
     padding: 5px 9px;
     border-radius: 999px;
     pointer-events:none;
     opacity: 0.9;
+  }
+
+  .skip-link{
+    position:absolute; left:8px; top:-40px;
+    background: var(--ink); color: var(--bg);
+    padding: 8px 12px; border-radius: 6px;
+    font-size: 0.85rem; z-index: 10;
+    transition: top .15s ease;
+  }
+  .skip-link:focus{ top: 8px; }
+
+  a, button, [tabindex]{ }
+  a:focus-visible, button:focus-visible, [tabindex]:focus-visible, #canvas-container:focus-visible{
+    outline: 2px solid var(--gem);
+    outline-offset: 3px;
+  }
+
+  .sr-only{
+    position:absolute; width:1px; height:1px;
+    padding:0; margin:-1px; overflow:hidden;
+    clip:rect(0,0,0,0); white-space:nowrap; border:0;
+  }
+
+  .pause-btn{
+    position:absolute; bottom: 14px; right: 14px;
+    background: rgba(0,0,0,0.55);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: var(--ink);
+    font-size: 0.72rem;
+    padding: 6px 11px;
+    border-radius: 999px;
+    cursor:pointer;
   }
 
   .controls{
@@ -186,41 +218,49 @@
 </head>
 <body>
 
+<a class="skip-link" href="#controls">Skip to gem controls</a>
+
 <div class="wrap">
-  <div class="head">
+  <header class="head">
     <h1>Facet</h1>
     <p>A gem, cut from a few hundred triangles. Drag it, scroll past it, tap it, change what it's made of.</p>
-  </div>
+  </header>
 
-  <div class="scroll-runway">↓ scroll to load the scene</div>
+  <div class="scroll-runway" aria-hidden="true">↓ scroll to load the scene</div>
 
+  <main>
   <div class="stage" id="stage">
-    <div id="fallback">
-      <div class="stone" id="fallback-stone"></div>
+    <div id="fallback" role="img" aria-label="Static preview of a sapphire-blue faceted gem">
+      <div class="stone" id="fallback-stone" aria-hidden="true"></div>
       <div class="note" id="fallback-note">Static preview — 3D view unavailable in this context.</div>
     </div>
-    <div id="canvas-container"></div>
-    <div class="hint" id="hint">drag to spin · tap to pulse</div>
+    <div id="canvas-container" tabindex="0" role="img"
+         aria-label="Interactive 3D sapphire gem, glass finish. Use arrow keys to rotate, Enter to pulse."></div>
+    <div class="hint" id="hint" aria-hidden="true">drag to spin · tap to pulse · arrow keys when focused</div>
+    <button class="pause-btn" id="pause-btn" type="button" aria-pressed="false">Pause rotation</button>
   </div>
 
-  <div class="controls">
+  <div id="status" class="sr-only" role="status" aria-live="polite"></div>
+
+  <div class="controls" id="controls">
     <div class="group">
-      <h2>Color</h2>
-      <div class="swatches" id="swatches"></div>
+      <h2 id="color-label">Color</h2>
+      <div class="swatches" id="swatches" role="group" aria-labelledby="color-label"></div>
     </div>
     <div class="group">
-      <h2>Cut &amp; finish</h2>
-      <div class="presets" id="presets"></div>
+      <h2 id="finish-label">Cut &amp; finish</h2>
+      <div class="presets" id="presets" role="group" aria-labelledby="finish-label"></div>
     </div>
   </div>
 
-  <button class="perf-toggle" id="perf-toggle">Performance notes (FE-10)</button>
+  <button class="perf-toggle" id="perf-toggle" aria-expanded="false" aria-controls="perf-panel">Performance notes (FE-10)</button>
   <div class="perf-panel" id="perf-panel">
     <div><b>Load:</b> Three.js core only (~150KB min+gzip), no model file — geometry is procedural (icosahedron, ~80 tris). Nothing fetched until the stage scrolls into view (IntersectionObserver), so first paint and LCP are unaffected.</div>
     <div style="margin-top:6px"><b>Runtime:</b> render loop pauses entirely when the stage leaves the viewport or the tab is hidden. Pixel ratio capped at 2. No shadow maps, no post-processing, one directional + one ambient light.</div>
     <div style="margin-top:6px"><b>Fallback:</b> a static CSS gem replaces the canvas when <code>prefers-reduced-motion</code> is set or WebGL isn't available — same color/finish controls still work, just no animation.</div>
     <div style="margin-top:6px"><b>Target:</b> 60fps on mid-range mobile; scene stays under ~0.3ms/frame CPU on a 2021 laptop in testing.</div>
   </div>
+  </main>
 </div>
 
 <script>
@@ -260,6 +300,24 @@
   applyCssVarColor(state.color);
 
   // ---- build swatch + preset UI (works for both 3D mode and fallback mode) ----
+  var statusEl = document.getElementById("status");
+  function announce(msg){
+    statusEl.textContent = "";
+    // re-trigger so repeated identical messages still get announced
+    window.setTimeout(function(){ statusEl.textContent = msg; }, 30);
+  }
+
+  var canvasContainer2 = document.getElementById("canvas-container");
+  function updateGemAriaLabel(){
+    canvasContainer2.setAttribute("aria-label",
+      "Interactive 3D " + currentColorName() + " gem, " + state.preset.name.toLowerCase() +
+      " finish. Use arrow keys to rotate, Enter to pulse.");
+  }
+  function currentColorName(){
+    var found = COLORS.filter(function(c){ return c.hex === state.color; })[0];
+    return found ? found.name : "custom";
+  }
+
   var swatchesEl = document.getElementById("swatches");
   COLORS.forEach(function(c, i){
     var b = document.createElement("button");
@@ -267,12 +325,19 @@
     b.style.background = c.hex;
     b.title = c.name;
     b.setAttribute("aria-label", "Set color to " + c.name);
+    b.setAttribute("aria-pressed", i === 0 ? "true" : "false");
     b.addEventListener("click", function(){
       state.color = c.hex;
       applyCssVarColor(c.hex);
-      Array.prototype.forEach.call(swatchesEl.children, function(el){ el.classList.remove("active"); });
+      Array.prototype.forEach.call(swatchesEl.children, function(el){
+        el.classList.remove("active");
+        el.setAttribute("aria-pressed", "false");
+      });
       b.classList.add("active");
+      b.setAttribute("aria-pressed", "true");
       if (window.__setGemColor) window.__setGemColor(c.hex);
+      updateGemAriaLabel();
+      announce("Color set to " + c.name);
     });
     swatchesEl.appendChild(b);
   });
@@ -282,11 +347,18 @@
     var b = document.createElement("button");
     b.className = "preset-btn" + (i === 0 ? " active" : "");
     b.textContent = p.name;
+    b.setAttribute("aria-pressed", i === 0 ? "true" : "false");
     b.addEventListener("click", function(){
       state.preset = p;
-      Array.prototype.forEach.call(presetsEl.children, function(el){ el.classList.remove("active"); });
+      Array.prototype.forEach.call(presetsEl.children, function(el){
+        el.classList.remove("active");
+        el.setAttribute("aria-pressed", "false");
+      });
       b.classList.add("active");
+      b.setAttribute("aria-pressed", "true");
       if (window.__setGemPreset) window.__setGemPreset(p);
+      updateGemAriaLabel();
+      announce("Finish set to " + p.name);
     });
     presetsEl.appendChild(b);
   });
@@ -295,7 +367,19 @@
   var perfToggle = document.getElementById("perf-toggle");
   var perfPanel = document.getElementById("perf-panel");
   perfToggle.addEventListener("click", function(){
-    perfPanel.classList.toggle("open");
+    var open = perfPanel.classList.toggle("open");
+    perfToggle.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+
+  // ---- pause / stop button: keyboard-reachable control for the continuous animation ----
+  var pauseBtn = document.getElementById("pause-btn");
+  var motionPaused = false;
+  pauseBtn.addEventListener("click", function(){
+    motionPaused = !motionPaused;
+    pauseBtn.setAttribute("aria-pressed", motionPaused ? "true" : "false");
+    pauseBtn.textContent = motionPaused ? "Resume rotation" : "Pause rotation";
+    window.__motionPaused = motionPaused;
+    announce(motionPaused ? "Rotation paused" : "Rotation resumed");
   });
 
   // ---- capability checks ----
@@ -315,6 +399,10 @@
       ? "Reduced motion is on, so this stays a static preview."
       : "Static preview — your browser doesn't support WebGL.";
     hintEl.style.display = "none";
+    canvasContainer.removeAttribute("tabindex");
+    canvasContainer.removeAttribute("role");
+    canvasContainer.removeAttribute("aria-label");
+    document.getElementById("pause-btn").style.display = "none";
     return; // never touch three.js at all in this path — zero extra bytes loaded
   }
 
@@ -442,6 +530,18 @@
     canvasContainer.addEventListener("pointercancel", endDrag);
     canvasContainer.addEventListener("pointerleave", function(){ if(!dragging) return; });
 
+    // ---- keyboard control: arrow keys rotate, Enter/Space pulses ----
+    canvasContainer.addEventListener("keydown", function(e){
+      var step = 0.12;
+      if (e.key === "ArrowLeft"){ group.rotation.y -= step; e.preventDefault(); }
+      else if (e.key === "ArrowRight"){ group.rotation.y += step; e.preventDefault(); }
+      else if (e.key === "ArrowUp"){ group.rotation.x = Math.max(-0.9, group.rotation.x - step); e.preventDefault(); }
+      else if (e.key === "ArrowDown"){ group.rotation.x = Math.min(0.9, group.rotation.x + step); e.preventDefault(); }
+      else if (e.key === "Enter" || e.key === " "){ pulse = 0.0001; e.preventDefault(); }
+      else { return; }
+      hintEl.style.opacity = "0";
+    });
+
     // tap-to-pulse (a click that wasn't really a drag)
     var downX = 0, downY = 0, downTime = 0;
     var pulse = 0; // 0..1 animation progress, -1 means inactive
@@ -520,8 +620,9 @@
       group.scale.x += (scaleTarget - group.scale.x) * Math.min(1, dt * 6);
       group.scale.y = group.scale.z = group.scale.x;
 
-      if (!dragging){
+      if (!dragging && !window.__motionPaused){
         // idle auto-rotate + scroll-driven tilt, both skipped under reduced motion (we never get here if so)
+        // and skipped while the user has hit the keyboard-reachable "Pause rotation" button
         group.rotation.y += velX * (dt * 60);
         var targetTiltX = scrollTilt * 0.35;
         group.rotation.x += (targetTiltX - group.rotation.x) * Math.min(1, dt * 2);
