@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Facet — light, cut into code</title>
+<style>
+  :root{
+    --ink: #f4f2ec;
+    --ink-dim: rgba(244,242,236,0.72);
+    --line: rgba(244,242,236,0.22);
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; background:#0c0c10; }
+  body{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; }
+
+  .hero{
+    position: relative;
+    width: 100%;
+    height: 100svh;
+    min-height: 480px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+  }
+
+  #gl{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    display:block;
+  }
+
+  /* static fallback: shown when WebGL is unavailable. A gradient stand-in
+     for the shader, not a screenshot — cheap, no extra asset to load. */
+  .static-fallback{
+    position:absolute; inset:0;
+    background:
+      radial-gradient(120% 90% at 30% 20%, #3a2f6b 0%, transparent 55%),
+      radial-gradient(100% 80% at 80% 70%, #1f4d5c 0%, transparent 55%),
+      #0c0c10;
+    display:none;
+  }
+  body.no-webgl .static-fallback{ display:block; }
+  body.no-webgl #gl{ display:none; }
+
+  /* contrast scrim: darkens the shader under the text without hiding it,
+     independent of whatever colors the shader happens to be showing */
+  .scrim{
+    position:absolute; inset:0;
+    background: linear-gradient(180deg,
+      rgba(6,6,10,0.20) 0%,
+      rgba(6,6,10,0.35) 45%,
+      rgba(6,6,10,0.72) 100%);
+    pointer-events:none;
+  }
+
+  .content{
+    position:relative;
+    z-index: 2;
+    max-width: 640px;
+    padding: 0 7vw;
+    color: var(--ink);
+  }
+  .content .eyebrow{
+    font-size: 0.82rem;
+    color: var(--ink-dim);
+    margin: 0 0 14px;
+  }
+  .content h1{
+    font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    font-weight: 500;
+    font-size: clamp(2.1rem, 6vw, 3.6rem);
+    line-height: 1.08;
+    letter-spacing: 0.2px;
+    margin: 0 0 18px;
+    text-shadow: 0 2px 18px rgba(0,0,0,0.35);
+  }
+  .content p{
+    font-size: 1.02rem;
+    line-height: 1.6;
+    color: var(--ink-dim);
+    max-width: 46ch;
+    margin: 0 0 26px;
+  }
+  .content a.cta{
+    display:inline-block;
+    color:#0c0c10;
+    background: var(--ink);
+    padding: 12px 22px;
+    border-radius: 999px;
+    text-decoration:none;
+    font-size: 0.92rem;
+    font-weight: 600;
+  }
+  .content a.cta:focus-visible{
+    outline: 2px solid var(--ink);
+    outline-offset: 4px;
+  }
+
+  .explain-toggle{
+    position:absolute; z-index:2;
+    right: 20px; bottom: 20px;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    font-size: 0.76rem;
+    padding: 8px 13px;
+    border-radius: 999px;
+    cursor:pointer;
+  }
+  .explain-toggle:focus-visible,
+  a.cta:focus-visible{ outline: 2px solid var(--ink); outline-offset: 3px; }
+
+  .explain-panel{
+    position:absolute; z-index:2;
+    right: 20px; bottom: 66px;
+    width: min(360px, calc(100vw - 40px));
+    max-height: 55vh;
+    overflow:auto;
+    background: rgba(10,10,14,0.86);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px 18px;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    color: var(--ink-dim);
+    display:none;
+  }
+  .explain-panel.open{ display:block; }
+  .explain-panel b{ color: var(--ink); }
+  .explain-panel ol{ margin: 8px 0 0; padding-left: 18px; }
+  .explain-panel li{ margin-bottom: 8px; }
+
+  @media (prefers-reduced-motion: reduce){
+    .explain-panel::after{ content: " (motion reduced — showing one still frame)"; }
+  }
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <canvas id="gl"></canvas>
+  <div class="static-fallback" aria-hidden="true"></div>
+  <div class="scrim" aria-hidden="true"></div>
+
+  <div class="content">
+    <p class="eyebrow">Facet</p>
+    <h1>Light, cut into code.</h1>
+    <p>A field of glass facets lit from wherever your pointer is. Move it, or don't — it drifts on its own too.</p>
+    <a class="cta" href="#">See the work</a>
+  </div>
+
+  <button class="explain-toggle" id="explain-toggle" type="button" aria-expanded="false" aria-controls="explain-panel">How this shader works</button>
+  <div class="explain-panel" id="explain-panel">
+    <b>What's on screen</b> is one WebGL draw call, no textures, no libraries. Each pixel:
+    <ol>
+      <li>gets a centered, aspect-corrected coordinate, then the whole field is slowly rotated and drifted using <code>u_time</code>;</li>
+      <li>is sorted into a triangular lattice by skewing the square pixel grid into 60° cells (the "facet" tiling);</li>
+      <li>gets a fake surface normal per triangle, hashed from that triangle's cell id — this is what makes each facet catch light differently;</li>
+      <li>is lit by a directional light aimed at <code>u_mouse</code>, plus a second light that orbits automatically via <code>u_time</code> so it's alive even with no input;</li>
+      <li>gets a base hue keyed off the facet's hash, drifting slowly over time;</li>
+      <li>is vignetted at the edges and dithered slightly to avoid color banding.</li>
+    </ol>
+  </div>
+</section>
+
+<script>
+(function(){
+  "use strict";
+
+  var canvas = document.getElementById("gl");
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+  if (!gl){
+    document.body.classList.add("no-webgl");
+    // no WebGL at all: static gradient fallback (already in the DOM) is all we ship.
+    wireExplainToggle();
+    return;
+  }
+
+  // ---------------------------------------------------------------------
+  // shaders
+  // ---------------------------------------------------------------------
+
+  var VERT = [
+    "attribute vec2 a_position;",
+    "void main(){",
+    "  gl_Position = vec4(a_position, 0.0, 1.0);",
+    "}"
+  ].join("\n");
+
+  var FRAG = [
+    "precision highp float;",
+    "",
+    "uniform vec2  u_resolution;",
+    "uniform float u_time;",
+    "uniform vec2  u_mouse;",
+    "",
+    "// turns a 2D cell id into a pseudo-random 2D vector in [-1,1]",
+    "vec2 hash2(vec2 p){",
+    "  p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));",
+    "  return fract(sin(p) * 43758.5453) * 2.0 - 1.0;",
+    "}",
+    "",
+    "vec2 rotate(vec2 v, float a){",
+    "  float s = sin(a), c = cos(a);",
+    "  return mat2(c, -s, s, c) * v;",
+    "}",
+    "",
+    "void main(){",
+    "  // 1. aspect-corrected, centered coordinates: (0,0) at screen center,",
+    "  //    short axis spans -1..1 so the grid doesn't stretch on wide screens",
+    "  vec2 uv = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);",
+    "  vec2 mouse = (u_mouse - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);",
+    "",
+    "  // 2. slow whole-field drift + rotation over time, so it never sits still",
+    "  //    or loops obviously, even before anyone touches it",
+    "  uv = rotate(uv, u_time * 0.02);",
+    "  uv += vec2(cos(u_time * 0.05), sin(u_time * 0.04)) * 0.05;",
+    "",
+    "  // 3. build a triangular lattice: skew the square grid so unit cells",
+    "  //    become 60 degree triangles",
+    "  float scale = 6.0;",
+    "  vec2 g = uv * scale;",
+    "  mat2 skew = mat2(1.0, 0.0, 0.5, 0.8660254);",
+    "  vec2 sg = skew * g;",
+    "  vec2 cell = floor(sg);",
+    "  vec2 f = fract(sg);",
+    "",
+    "  // which of the two triangles inside this cell?",
+    "  float side = step(f.x, f.y);",
+    "  vec2 facetId = cell + side;",
+    "",
+    "  // 4. a fake per-facet surface normal from the hash - each triangle",
+    "  //    catches light a bit differently, like a cut gemstone",
+    "  vec2 tilt = hash2(facetId) * 0.6;",
+    "  vec3 normal = normalize(vec3(tilt, 1.0));",
+    "",
+    "  // 5. primary light follows the pointer; a second light orbits on its",
+    "  //    own via u_time so the piece has depth even with no interaction",
+    "  vec3 lightDir = normalize(vec3(mouse * 1.5, 0.8));",
+    "  vec3 rimDir   = normalize(vec3(cos(u_time * 0.3), sin(u_time * 0.3), 0.6));",
+    "  vec3 viewDir  = vec3(0.0, 0.0, 1.0);",
+    "",
+    "  float diffuse = max(dot(normal, lightDir), 0.0);",
+    "  float rim     = max(dot(normal, rimDir), 0.0) * 0.4;",
+    "  vec3 halfV    = normalize(lightDir + viewDir);",
+    "  float spec    = pow(max(dot(normal, halfV), 0.0), 40.0);",
+    "",
+    "  // 6. base color per facet: hue keyed off the facet id, drifting",
+    "  //    slowly through a narrow range over time",
+    "  float hue = fract(hash2(facetId).x * 0.5 + 0.55 + u_time * 0.01);",
+    "  vec3 base = 0.5 + 0.5 * cos(6.28318 * (hue + vec3(0.0, 0.33, 0.67)));",
+    "",
+    "  vec3 color = base * (0.25 + diffuse * 0.9 + rim) + spec * 0.8;",
+    "",
+    "  // 7. vignette: keeps edges dark, which also helps hero text stay readable",
+    "  float vignette = smoothstep(1.1, 0.2, length(uv));",
+    "  color *= vignette;",
+    "",
+    "  // 8. dither: a hair of screen-space noise to hide banding in the gradient",
+    "  color += hash2(gl_FragCoord.xy).x * (1.0 / 255.0);",
+    "",
+    "  gl_FragColor = vec4(color, 1.0);",
+    "}"
+  ].join("\n");
+
+  function compile(type, src){
+    var s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)){
+      console.error(gl.getShaderInfoLog(s));
+      gl.deleteShader(s);
+      return null;
+    }
+    return s;
+  }
+
+  var vs = compile(gl.VERTEX_SHADER, VERT);
+  var fs = compile(gl.FRAGMENT_SHADER, FRAG);
+  var program = null;
+  if (vs && fs){
+    program = gl.createProgram();
+    gl.attachShader(program, vs);
+    gl.attachShader(program, fs);
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)){
+      console.error(gl.getProgramInfoLog(program));
+      program = null;
+    }
+  }
+
+  if (!program){
+    document.body.classList.add("no-webgl");
+    wireExplainToggle();
+    return;
+  }
+
+  gl.useProgram(program);
+
+  // one big triangle covering the whole clip space — cheaper than two
+  // triangles for a fullscreen quad, and just as easy to reason about
+  var buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+    -1, -1,
+     3, -1,
+    -1,  3
+  ]), gl.STATIC_DRAW);
+
+  var posLoc = gl.getAttribLocation(program, "a_position");
+  gl.enableVertexAttribArray(posLoc);
+  gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+  var u_res = gl.getUniformLocation(program, "u_resolution");
+  var u_time = gl.getUniformLocation(program, "u_time");
+  var u_mouse = gl.getUniformLocation(program, "u_mouse");
+
+  // ---------------------------------------------------------------------
+  // sizing — devicePixelRatio capped so retina/4K screens don't melt fill-rate
+  // ---------------------------------------------------------------------
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  function resize(){
+    var w = canvas.clientWidth, h = canvas.clientHeight;
+    var pw = Math.round(w * dpr), ph = Math.round(h * dpr);
+    if (canvas.width !== pw || canvas.height !== ph){
+      canvas.width = pw;
+      canvas.height = ph;
+      gl.viewport(0, 0, pw, ph);
+    }
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  // ---------------------------------------------------------------------
+  // pointer: smoothed toward the target so motion feels fluid, not jittery.
+  // Defaults to screen center so the piece looks intentional before any input.
+  // ---------------------------------------------------------------------
+  var mouseTarget = [canvas.width * 0.5, canvas.height * 0.5];
+  var mouseSmooth = mouseTarget.slice();
+
+  function setMouseFromEvent(clientX, clientY){
+    var rect = canvas.getBoundingClientRect();
+    mouseTarget[0] = (clientX - rect.left) * dpr;
+    mouseTarget[1] = (rect.height - (clientY - rect.top)) * dpr; // flip Y to match gl_FragCoord
+  }
+  window.addEventListener("pointermove", function(e){ setMouseFromEvent(e.clientX, e.clientY); }, { passive: true });
+  window.addEventListener("pointerdown", function(e){ setMouseFromEvent(e.clientX, e.clientY); }, { passive: true });
+
+  // ---------------------------------------------------------------------
+  // render loop — paused whenever the tab is hidden
+  // ---------------------------------------------------------------------
+  var startTime = performance.now();
+  var rafId = null;
+
+  function frame(){
+    rafId = requestAnimationFrame(frame);
+
+    mouseSmooth[0] += (mouseTarget[0] - mouseSmooth[0]) * 0.08;
+    mouseSmooth[1] += (mouseTarget[1] - mouseSmooth[1]) * 0.08;
+
+    var t = (performance.now() - startTime) / 1000;
+    gl.uniform2f(u_res, canvas.width, canvas.height);
+    gl.uniform1f(u_time, t);
+    gl.uniform2f(u_mouse, mouseSmooth[0], mouseSmooth[1]);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+
+  function renderStaticFrame(){
+    gl.uniform2f(u_res, canvas.width, canvas.height);
+    gl.uniform1f(u_time, 0.0);
+    gl.uniform2f(u_mouse, canvas.width * 0.5, canvas.height * 0.5);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+
+  if (reduceMotion){
+    // one still frame, no rAF loop at all — this *is* the reduced-motion fallback
+    renderStaticFrame();
+  } else {
+    frame();
+    document.addEventListener("visibilitychange", function(){
+      if (document.hidden){
+        if (rafId !== null){ cancelAnimationFrame(rafId); rafId = null; }
+      } else if (rafId === null){
+        frame();
+      }
+    });
+  }
+
+  wireExplainToggle();
+
+  function wireExplainToggle(){
+    var btn = document.getElementById("explain-toggle");
+    var panel = document.getElementById("explain-panel");
+    btn.addEventListener("click", function(){
+      var open = panel.classList.toggle("open");
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+  }
+})();
+</script>
+</body>
+</html>
